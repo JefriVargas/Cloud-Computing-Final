@@ -4,7 +4,6 @@ service: cine
 
 provider:
   name: aws
-  runtime: python3.12
   region: us-east-1
   stage: ${opt:stage, 'dev'}
   role: arn:aws:iam::381491830959:role/LabRole
@@ -40,6 +39,7 @@ functions:
   # API de Usuarios en Python
   createUser:
     handler: api_usuarios/handler.create_user
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -49,6 +49,7 @@ functions:
 
   loginUser:
     handler: api_usuarios/handler.login_user
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -58,9 +59,9 @@ functions:
 
 
   # API de Películas en Python
-
   listMovies:
     handler: api_peliculas/handler.list_movies
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -70,6 +71,7 @@ functions:
 
   getMovieDetails:
     handler: api_peliculas/handler.get_movie_details
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -79,6 +81,7 @@ functions:
 
   addMovie:
     handler: api_peliculas/handler.add_movie
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -89,6 +92,7 @@ functions:
   # API de Horarios en Python
   listSchedules:
     handler: api_horarios/handler.list_schedules
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -98,6 +102,7 @@ functions:
 
   updateScheduleSeats:
     handler: api_horarios/handler.update_schedule_seats
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -107,6 +112,7 @@ functions:
 
   createSchedule:
     handler: api_horarios/handler.create_schedule
+    runtime: python3.12
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
     events:
@@ -117,6 +123,7 @@ functions:
   # API de Productos en Node.js
   listProducts:
     handler: api_productos/handler.listProducts
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /productos
@@ -124,6 +131,7 @@ functions:
   
   addProduct:
     handler: api_productos/handler.addProduct
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /productos
@@ -131,6 +139,7 @@ functions:
   
   deleteProduct:
     handler: api_productos/handler.deleteProduct
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /productos/{product_id}
@@ -139,6 +148,7 @@ functions:
   # API de Reservas en Node.js
   createReservation:
     handler: api_reservas/handler.createReservation
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /reservas
@@ -153,6 +163,7 @@ functions:
   
   listReservationsByEmail:
     handler: api_reservas/handler.listReservationsByEmail
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /reservas
@@ -161,6 +172,7 @@ functions:
   # API de Órdenes en Node.js
   createOrder:
     handler: api_ordenes/handler.createOrder
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /ordenes
@@ -168,6 +180,7 @@ functions:
   
   getOrder:
     handler: api_ordenes/handler.getOrder
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /ordenes/{order_id}
@@ -175,6 +188,7 @@ functions:
   
   listOrdersByUser:
     handler: api_ordenes/handler.listOrdersByUser
+    runtime: nodejs22.x
     events:
       - httpApi:
           path: /ordenes
