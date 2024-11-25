@@ -123,7 +123,7 @@ functions:
   # API de Productos en Node.js
   listProducts:
     handler: api_productos/handler.listProducts
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -133,7 +133,7 @@ functions:
   
   addProduct:
     handler: api_productos/handler.addProduct
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -143,7 +143,7 @@ functions:
   
   deleteProduct:
     handler: api_productos/handler.deleteProduct
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -154,7 +154,7 @@ functions:
   # API de Reservas en Node.js
   createReservation:
     handler: api_reservas/handler.createReservation
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -164,7 +164,7 @@ functions:
   
   getReservation:
     handler: api_reservas/handler.getReservation
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -174,7 +174,7 @@ functions:
   
   listReservationsByEmail:
     handler: api_reservas/handler.listReservationsByEmail
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -185,7 +185,7 @@ functions:
   # API de Órdenes en Node.js
   createOrder:
     handler: api_ordenes/handler.createOrder
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -195,7 +195,7 @@ functions:
   
   getOrder:
     handler: api_ordenes/handler.getOrder
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
@@ -205,7 +205,7 @@ functions:
   
   listOrdersByUser:
     handler: api_ordenes/handler.listOrdersByUser
-    runtime: nodejs22.x
+    runtime: nodejs18.x
     layers:
       - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
     events:
