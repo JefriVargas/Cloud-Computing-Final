@@ -1,99 +1,105 @@
-import os
-import json
-import boto3
-from uuid import uuid4
-from datetime import datetime
-from boto3.dynamodb.conditions import Key
-import decimal
+const AWS = require('aws-sdk');
+const { v4: uuidv4 } = require('uuid');
 
-dynamodb = boto3.resource('dynamodb')
-ORDERS_TABLE = os.environ['DYNAMODB_TABLE_ORDENES']
+// Configuración de DynamoDB
+const dynamodb = new AWS.DynamoDB.DocumentClient();
+const ORDERS_TABLE = process.env.DYNAMODB_TABLE_ORDENES;
 
-# Helper function to convert Decimal to native types
-def decimal_to_native(obj):
-    if isinstance(obj, list):
-        return [decimal_to_native(i) for i in obj]
-    elif isinstance(obj, dict):
-        return {k: decimal_to_native(v) for k, v in obj.items()}
-    elif isinstance(obj, decimal.Decimal):
-        return int(obj) if obj % 1 == 0 else float(obj)
-    return obj
-
-# Crear una orden de compra
-def create_order(event, context):
-    try:
-        data = json.loads(event['body'])
-    except json.JSONDecodeError:
+// Crear una orden de compra
+exports.createOrder = async (event) => {
+    let data;
+    try {
+        data = JSON.parse(event.body);
+    } catch (error) {
         return {
-            'statusCode': 400,
-            'body': json.dumps({'error': 'El cuerpo de la solicitud no es JSON válido'})
-        }
-
-    tenant_id = data.get('tenant_id')
-    email = data.get('email')
-    products = data.get('products')
-
-    if not tenant_id or not email or not products:
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'error': 'Campos tenant_id, email y products son requeridos'})
-        }
-
-    order_id = str(uuid4())
-    try:
-        total_price = sum(decimal.Decimal(str(product['price'])) for product in products)
-    except (decimal.InvalidOperation, ValueError):
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'error': 'El precio de los productos debe ser un número válido'})
-        }
-
-    item = {
-        'tenant_id': tenant_id,
-        'order_id': order_id,
-        'email': email,
-        'products': products,
-        'total_price': total_price,
-        'created_at': datetime.utcnow().isoformat()
+            statusCode: 400,
+            body: JSON.stringify({ error: 'El cuerpo de la solicitud no es JSON válido' }),
+        };
     }
 
-    table = dynamodb.Table(ORDERS_TABLE)
-    try:
-        table.put_item(Item=item)
-        return {
-            'statusCode': 201,
-            'body': json.dumps({'message': 'Orden creada exitosamente', 'order_id': order_id})
-        }
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': 'Error al crear la orden', 'details': str(e)})
-        }
+    const { tenant_id, email, products } = data;
 
-# Listar órdenes de un usuario por email
-def list_orders_by_user(event, context):
-    tenant_id = event['queryStringParameters'].get('tenant_id')
-    email = event['queryStringParameters'].get('email')
+    if (!tenant_id || !email || !products) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: 'Campos tenant_id, email y products son requeridos' }),
+        };
+    }
 
-    if not tenant_id or not email:
-        return {
-            'statusCode': 400,
-            'body': json.dumps({'error': 'Campos tenant_id y email son requeridos'})
-        }
+    const order_id = uuidv4();
+    let total_price;
 
-    table = dynamodb.Table(ORDERS_TABLE)
-    try:
-        response = table.query(
-            IndexName='EmailIndex',
-            KeyConditionExpression=Key('tenant_id').eq(tenant_id) & Key('email').eq(email)
-        )
-        items = decimal_to_native(response.get('Items', []))
-        return {
-            'statusCode': 200,
-            'body': json.dumps(items)
+    try {
+        total_price = products.reduce((sum, product) => sum + parseFloat(product.price), 0);
+        if (isNaN(total_price)) {
+            throw new Error('Precio inválido');
         }
-    except Exception as e:
+    } catch (error) {
         return {
-            'statusCode': 500,
-            'body': json.dumps({'error': 'Error al listar órdenes', 'details': str(e)})
-        }
+            statusCode: 400,
+            body: JSON.stringify({ error: 'El precio de los productos debe ser un número válido' }),
+        };
+    }
+
+    const item = {
+        tenant_id,
+        order_id,
+        email,
+        products,
+        total_price,
+        created_at: new Date().toISOString(),
+    };
+
+    const params = {
+        TableName: ORDERS_TABLE,
+        Item: item,
+    };
+
+    try {
+        await dynamodb.put(params).promise();
+        return {
+            statusCode: 201,
+            body: JSON.stringify({ message: 'Orden creada exitosamente', order_id }),
+        };
+    } catch (error) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Error al crear la orden', details: error.message }),
+        };
+    }
+};
+
+// Listar órdenes de un usuario por email
+exports.listOrdersByUser = async (event) => {
+    const { tenant_id, email } = event.queryStringParameters || {};
+
+    if (!tenant_id || !email) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: 'Campos tenant_id y email son requeridos' }),
+        };
+    }
+
+    const params = {
+        TableName: ORDERS_TABLE,
+        IndexName: 'EmailIndex',
+        KeyConditionExpression: 'tenant_id = :tenant_id AND email = :email',
+        ExpressionAttributeValues: {
+            ':tenant_id': tenant_id,
+            ':email': email,
+        },
+    };
+
+    try {
+        const result = await dynamodb.query(params).promise();
+        return {
+            statusCode: 200,
+            body: JSON.stringify(result.Items),
+        };
+    } catch (error) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Error al listar órdenes', details: error.message }),
+        };
+    }
+};
