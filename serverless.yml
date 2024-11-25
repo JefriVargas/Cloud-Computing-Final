@@ -114,89 +114,72 @@ functions:
           path: /horarios
           method: POST
 
-  # API de Productos en Python
+  # API de Productos en Node.js
   listProducts:
-    handler: api_productos/handler.list_products
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_productos/handler.listProducts
     events:
       - httpApi:
           path: /productos
           method: GET
-
+  
   addProduct:
-    handler: api_productos/handler.add_product
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_productos/handler.addProduct
     events:
       - httpApi:
           path: /productos
           method: POST
-
+  
   deleteProduct:
-    handler: api_productos/handler.delete_product
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_productos/handler.deleteProduct
     events:
       - httpApi:
           path: /productos/{product_id}
           method: DELETE
-
-  # API de Reservas en Python
+  
+  # API de Reservas en Node.js
   createReservation:
-    handler: api_reservas/handler.create_reservation
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_reservas/handler.createReservation
     events:
       - httpApi:
           path: /reservas
           method: POST
-
+  
   getReservation:
-    handler: api_reservas/handler.get_reservation
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_reservas/handler.getReservation
     events:
       - httpApi:
           path: /reservas/{reservation_id}
           method: GET
-
+  
   listReservationsByEmail:
-    handler: api_reservas/handler.list_reservations_by_email
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_reservas/handler.listReservationsByEmail
     events:
       - httpApi:
           path: /reservas
           method: GET
-
-  # API de Órdenes en Python
+  
+  # API de Órdenes en Node.js
   createOrder:
-    handler: api_ordenes/handler.create_order
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_ordenes/handler.createOrder
     events:
       - httpApi:
           path: /ordenes
           method: POST
-
+  
   getOrder:
-    handler: api_ordenes/handler.get_order
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_ordenes/handler.getOrder
     events:
       - httpApi:
           path: /ordenes/{order_id}
           method: GET
-
+  
   listOrdersByUser:
-    handler: api_ordenes/handler.list_orders_by_user
-    layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    handler: api_ordenes/handler.listOrdersByUser
     events:
       - httpApi:
           path: /ordenes
           method: GET
+
 
 resources:
   Resources:
