@@ -1,0 +1,341 @@
+org: jefricloud
+app: cine-utec
+service: cine
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  role: arn:aws:iam::381491830959:role/LabRole
+  environment:
+    DYNAMODB_TABLE_USUARIOS: Usuarios-${self:provider.stage}
+    DYNAMODB_TABLE_PELICULAS: Peliculas-${self:provider.stage}
+    DYNAMODB_TABLE_HORARIOS: Horarios-${self:provider.stage}
+    DYNAMODB_TABLE_RESERVAS: Reservas-${self:provider.stage}
+    DYNAMODB_TABLE_PRODUCTOS: Productos-${self:provider.stage}
+    DYNAMODB_TABLE_ORDENES: Ordenes-${self:provider.stage}
+    JWT_SECRET: "mysecretkey"
+
+  httpApi:
+    cors:
+      allowedOrigins: ['*']
+      allowedHeaders: ['Content-Type', 'Authorization']
+      allowedMethods: ['OPTIONS', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:GetItem"
+        - "dynamodb:Query"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:Scan"
+        - "dynamodb:DeleteItem"
+      Resource:
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/*"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/*/index/*"
+
+functions:
+  # API de Usuarios en Python
+  createUser:
+    handler: api_usuarios/handler.create_user
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /usuarios/registro
+          method: POST
+
+  loginUser:
+    handler: api_usuarios/handler.login_user
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /usuarios/login
+          method: POST
+
+
+  # API de Películas en Python
+
+  listMovies:
+    handler: api_peliculas/handler.list_movies
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /peliculas
+          method: GET
+
+  getMovieDetails:
+    handler: api_peliculas/handler.get_movie_details
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /peliculas/{movie_id}
+          method: GET
+
+  addMovie:
+    handler: api_peliculas/handler.add_movie
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /peliculas
+          method: POST
+
+  # API de Horarios en Python
+  listSchedules:
+    handler: api_horarios/handler.list_schedules
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /horarios
+          method: GET
+
+  updateScheduleSeats:
+    handler: api_horarios/handler.update_schedule_seats
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /horarios/{schedule_id}
+          method: PATCH
+
+  createSchedule:
+    handler: api_horarios/handler.create_schedule
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /horarios
+          method: POST
+
+  # API de Productos en Python
+  listProducts:
+    handler: api_productos/handler.list_products
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /productos
+          method: GET
+
+  addProduct:
+    handler: api_productos/handler.add_product
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /productos
+          method: POST
+
+  deleteProduct:
+    handler: api_productos/handler.delete_product
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /productos/{product_id}
+          method: DELETE
+
+  # API de Reservas en Python
+  createReservation:
+    handler: api_reservas/handler.create_reservation
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /reservas
+          method: POST
+
+  getReservation:
+    handler: api_reservas/handler.get_reservation
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /reservas/{reservation_id}
+          method: GET
+
+  listReservationsByEmail:
+    handler: api_reservas/handler.list_reservations_by_email
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /reservas
+          method: GET
+
+  # API de Órdenes en Python
+  createOrder:
+    handler: api_ordenes/handler.create_order
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /ordenes
+          method: POST
+
+  getOrder:
+    handler: api_ordenes/handler.get_order
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /ordenes/{order_id}
+          method: GET
+
+  listOrdersByUser:
+    handler: api_ordenes/handler.list_orders_by_user
+    layers:
+      - arn:aws:lambda:us-east-1:381491830959:layer:Python_Dependencies:1
+    events:
+      - httpApi:
+          path: /ordenes
+          method: GET
+
+resources:
+  Resources:
+    UsuariosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_USUARIOS}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: email
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    PeliculasTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_PELICULAS}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: movie_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: movie_id
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    HorariosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_HORARIOS}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: schedule_id
+            AttributeType: S
+          - AttributeName: movie_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: schedule_id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: MovieIndex
+            KeySchema:
+              - AttributeName: tenant_id
+                KeyType: HASH
+              - AttributeName: movie_id
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    ReservasTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_RESERVAS}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: reservation_id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+          - AttributeName: function_date  # Nueva columna
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: reservation_id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: tenant_id
+                KeyType: HASH
+              - AttributeName: email
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: FunctionDateIndex  # Índice para buscar por fecha de función si es necesario
+            KeySchema:
+              - AttributeName: tenant_id
+                KeyType: HASH
+              - AttributeName: function_date
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    ProductosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_PRODUCTOS}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: product_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: product_id
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    OrdenesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_ORDENES}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: order_id
+            AttributeType: S
+          - AttributeName: email   # Cambiado de user_id a email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: order_id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex  # Cambiado de UserIndex a EmailIndex
+            KeySchema:
+              - AttributeName: tenant_id
+                KeyType: HASH
+              - AttributeName: email
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
