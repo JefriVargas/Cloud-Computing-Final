@@ -1,9 +1,50 @@
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 
-// Configuración de DynamoDB
+// DynamoDB Configuration
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const PRODUCTOS_TABLE = process.env.DYNAMODB_TABLE_PRODUCTOS;
+const SECRET_KEY = process.env.JWT_SECRET || 'mysecretkey';
+
+// Validate JWT token
+function validateJwt(token) {
+    try {
+        return jwt.verify(token, SECRET_KEY); // Verifies and decodes the token
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            throw new Error('El token ha expirado');
+        }
+        throw new Error('Token inválido');
+    }
+}
+
+// JWT Middleware
+function jwtRequired(handler) {
+    return async (event) => {
+        const authHeader = event.headers?.Authorization || event.headers?.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return {
+                statusCode: 401,
+                body: JSON.stringify({ error: 'Se requiere un token válido en el encabezado Authorization' }),
+            };
+        }
+
+        const token = authHeader.split(' ')[1];
+        try {
+            const decoded = validateJwt(token);
+            event.user = decoded; // Attach the decoded token to the event for further use
+        } catch (error) {
+            return {
+                statusCode: 401,
+                body: JSON.stringify({ error: error.message }),
+            };
+        }
+
+        // Proceed to the actual handler
+        return handler(event);
+    };
+}
 
 // Helper function to convert DynamoDB Decimals to native types
 const decimalToNative = (obj) => {
@@ -20,8 +61,8 @@ const decimalToNative = (obj) => {
     return obj;
 };
 
-// Listar productos
-exports.listProducts = async (event) => {
+// List Products
+exports.listProducts = jwtRequired(async (event) => {
     const { tenant_id } = event.queryStringParameters || {};
 
     if (!tenant_id) {
@@ -52,10 +93,10 @@ exports.listProducts = async (event) => {
             body: JSON.stringify({ error: 'Error al listar productos', details: error.message }),
         };
     }
-};
+});
 
-// Agregar un nuevo producto
-exports.addProduct = async (event) => {
+// Add Product
+exports.addProduct = jwtRequired(async (event) => {
     let data;
     try {
         data = JSON.parse(event.body);
@@ -106,10 +147,10 @@ exports.addProduct = async (event) => {
             body: JSON.stringify({ error: 'Error al agregar el producto', details: error.message }),
         };
     }
-};
+});
 
-// Eliminar producto
-exports.deleteProduct = async (event) => {
+// Delete Product
+exports.deleteProduct = jwtRequired(async (event) => {
     const pathParams = event.pathParameters || {};
     const queryParams = event.queryStringParameters || {};
     const { product_id } = pathParams;
@@ -142,4 +183,4 @@ exports.deleteProduct = async (event) => {
             body: JSON.stringify({ error: 'Error al eliminar el producto', details: error.message }),
         };
     }
-};
+});
