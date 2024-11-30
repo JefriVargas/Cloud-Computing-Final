@@ -1,10 +1,51 @@
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 
-// Configuración de DynamoDB
+// DynamoDB Configuration
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const RESERVAS_TABLE = process.env.DYNAMODB_TABLE_RESERVAS;
 const HORARIOS_TABLE = process.env.DYNAMODB_TABLE_HORARIOS;
+const SECRET_KEY = process.env.JWT_SECRET || 'mysecretkey';
+
+// Validate JWT token
+function validateJwt(token) {
+    try {
+        return jwt.verify(token, SECRET_KEY); // Verifies and decodes the token
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            throw new Error('El token ha expirado');
+        }
+        throw new Error('Token inválido');
+    }
+}
+
+// JWT Middleware
+function jwtRequired(handler) {
+    return async (event) => {
+        const authHeader = event.headers?.Authorization || event.headers?.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return {
+                statusCode: 401,
+                body: JSON.stringify({ error: 'Se requiere un token válido en el encabezado Authorization' }),
+            };
+        }
+
+        const token = authHeader.split(' ')[1];
+        try {
+            const decoded = validateJwt(token);
+            event.user = decoded; // Attach the decoded token to the event for further use
+        } catch (error) {
+            return {
+                statusCode: 401,
+                body: JSON.stringify({ error: error.message }),
+            };
+        }
+
+        // Proceed to the actual handler
+        return handler(event);
+    };
+}
 
 // Helper function to convert DynamoDB Decimals to native types
 const decimalToNative = (obj) => {
@@ -21,8 +62,8 @@ const decimalToNative = (obj) => {
     return obj;
 };
 
-// Listar reservas por email
-exports.listReservationsByEmail = async (event) => {
+// List Reservations by Email
+exports.listReservationsByEmail = jwtRequired(async (event) => {
     const { tenant_id, email } = event.queryStringParameters || {};
 
     if (!tenant_id || !email) {
@@ -55,10 +96,10 @@ exports.listReservationsByEmail = async (event) => {
             body: JSON.stringify({ error: 'Error listing reservations', details: error.message }),
         };
     }
-};
+});
 
-// Crear una reserva
-exports.createReservation = async (event) => {
+// Create Reservation
+exports.createReservation = jwtRequired(async (event) => {
     let data;
     try {
         data = JSON.parse(event.body);
@@ -90,7 +131,7 @@ exports.createReservation = async (event) => {
     let finalFunctionDate = function_date;
     let finalMovieTitle = movie_title;
 
-    // Obtener detalles adicionales de la función si faltan
+    // Fetch additional function details if missing
     if (!function_date || !movie_title) {
         const scheduleParams = {
             TableName: HORARIOS_TABLE,
@@ -133,7 +174,7 @@ exports.createReservation = async (event) => {
         }
     }
 
-    // Crear la reserva
+    // Create reservation
     const reservation_id = uuidv4();
     const item = {
         tenant_id,
@@ -169,4 +210,4 @@ exports.createReservation = async (event) => {
             }),
         };
     }
-};
+});
