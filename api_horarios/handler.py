@@ -4,6 +4,42 @@ import uuid
 import boto3
 from datetime import datetime
 from decimal import Decimal
+import jwt
+from functools import wraps
+
+SECRET_KEY = os.environ.get('JWT_SECRET', 'mysecretkey')
+
+def validate_jwt(token):
+    try:
+        decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        return decoded
+    except jwt.ExpiredSignatureError:
+        raise ValueError("El token ha expirado")
+    except jwt.InvalidTokenError:
+        raise ValueError("Token inválido")
+
+def jwt_required(func):
+    @wraps(func)
+    def wrapper(event, context, *args, **kwargs):
+        headers = event.get('headers', {})
+        auth_header = headers.get('Authorization')
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return {
+                "statusCode": 401,
+                "body": json.dumps({"error": "Se requiere un token válido en el encabezado Authorization"})
+            }
+        token = auth_header.split(" ")[1]  # Get the token part after "Bearer"
+        try:
+            decoded = validate_jwt(token)
+            event['user'] = decoded  # Add decoded JWT data to the event
+        except ValueError as e:
+            return {
+                "statusCode": 401,
+                "body": json.dumps({"error": str(e)})
+            }
+        return func(event, context, *args, **kwargs)
+    return wrapper
+
 
 # Configuración de DynamoDB
 dynamodb = boto3.resource('dynamodb')
@@ -20,6 +56,7 @@ def decimal_to_native(obj):
     return obj
 
 # Listar todos los horarios disponibles para un tenant
+@jwt_required
 def list_schedules(event, context):
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
     if not tenant_id:
@@ -45,6 +82,7 @@ def list_schedules(event, context):
         }
 
 # Crear un nuevo horario
+@jwt_required
 def create_schedule(event, context):
     data = json.loads(event['body'])
     if 'tenant_id' not in data or 'movie_id' not in data or 'function_date' not in data or 'available_seats' not in data:
@@ -78,6 +116,7 @@ def create_schedule(event, context):
 
 # Actualizar asientos disponibles después de una reserv
 # Actualizar asientos disponibles después de una reserva
+@jwt_required
 def update_schedule_seats(event, context):
     schedule_id = event['pathParameters']['schedule_id']
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
@@ -149,6 +188,7 @@ def update_schedule_seats(event, context):
 
 
 # Listar todos los horarios disponibles para un tenant, opcionalmente filtrando por movie_id
+@jwt_required
 def list_schedules(event, context):
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
     movie_id = event.get('queryStringParameters', {}).get('movie_id')
