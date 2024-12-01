@@ -91,6 +91,7 @@ exports.listReservationsByEmail = jwtRequired(async (event) => {
             body: JSON.stringify(items),
         };
     } catch (error) {
+        console.error('Error listing reservations:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Error listing reservations', details: error.message }),
@@ -164,6 +165,7 @@ exports.createReservation = jwtRequired(async (event) => {
                 };
             }
         } catch (error) {
+            console.error('Error fetching schedule details:', error);
             return {
                 statusCode: 500,
                 body: JSON.stringify({
@@ -202,6 +204,7 @@ exports.createReservation = jwtRequired(async (event) => {
             }),
         };
     } catch (error) {
+        console.error('Error creating reservation:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({
