@@ -7,8 +7,10 @@ from decimal import Decimal
 import jwt
 from functools import wraps
 
+# Load the secret key
 SECRET_KEY = os.environ.get('JWT_SECRET', 'mysecretkey')
 
+# Validate JWT token
 def validate_jwt(token):
     try:
         decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
@@ -18,21 +20,29 @@ def validate_jwt(token):
     except jwt.InvalidTokenError:
         raise ValueError("Token inválido")
 
+# Middleware to validate JWT
 def jwt_required(func):
     @wraps(func)
     def wrapper(event, context, *args, **kwargs):
         headers = event.get('headers', {})
-        auth_header = headers.get('Authorization')
+        print("Headers received:", headers)  # Debug log
+
+        # Check both lowercase and uppercase for the Authorization header
+        auth_header = headers.get('Authorization') or headers.get('authorization')
         if not auth_header or not auth_header.startswith("Bearer "):
+            print("Missing or malformed Authorization header")  # Debug log
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": "Se requiere un token válido en el encabezado Authorization"})
             }
-        token = auth_header.split(" ")[1]  # Get the token part after "Bearer"
+
+        token = auth_header.split(" ")[1]  # Extract the token part after "Bearer"
         try:
             decoded = validate_jwt(token)
-            event['user'] = decoded  # Add decoded JWT data to the event
+            print("Token decoded successfully:", decoded)  # Debug log
+            event['user'] = decoded  # Attach decoded JWT data to the event
         except ValueError as e:
+            print("JWT validation error:", str(e))  # Debug log
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": str(e)})
@@ -40,11 +50,11 @@ def jwt_required(func):
         return func(event, context, *args, **kwargs)
     return wrapper
 
-# Configuración de DynamoDB
+# DynamoDB Configuration
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_HORARIOS'])
 
-# Función de utilidad para convertir Decimal a tipos nativos de Python
+# Utility function to convert Decimal to native Python types
 def decimal_to_native(obj):
     if isinstance(obj, list):
         return [decimal_to_native(i) for i in obj]
@@ -54,10 +64,12 @@ def decimal_to_native(obj):
         return int(obj) if obj % 1 == 0 else float(obj)
     return obj
 
-# Listar todos los horarios disponibles para un tenant
+# List all schedules for a tenant
 @jwt_required
 def list_schedules(event, context):
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
+    movie_id = event.get('queryStringParameters', {}).get('movie_id')
+
     if not tenant_id:
         return {
             "statusCode": 400,
@@ -65,11 +77,17 @@ def list_schedules(event, context):
         }
 
     try:
+        # Create a key condition expression
+        key_condition = boto3.dynamodb.conditions.Key('tenant_id').eq(tenant_id)
+        if movie_id:
+            key_condition &= boto3.dynamodb.conditions.Key('movie_id').eq(movie_id)
+
         response = table.query(
-            KeyConditionExpression=boto3.dynamodb.conditions.Key('tenant_id').eq(tenant_id)
+            IndexName='MovieIndex',  # Ensure this index exists
+            KeyConditionExpression=key_condition
         )
         schedules = response.get('Items', [])
-        schedules = decimal_to_native(schedules)  # Convertir Decimals a nativos
+        schedules = decimal_to_native(schedules)  # Convert Decimals to native Python types
         return {
             "statusCode": 200,
             "body": json.dumps(schedules)
@@ -81,7 +99,7 @@ def list_schedules(event, context):
             "body": json.dumps({"error": "Error al listar los horarios", "details": str(e)})
         }
 
-# Crear un nuevo horario
+# Create a new schedule
 @jwt_required
 def create_schedule(event, context):
     try:
@@ -122,11 +140,12 @@ def create_schedule(event, context):
             "body": json.dumps({"error": "Error al crear el horario", "details": str(e)})
         }
 
-# Actualizar asientos disponibles después de una reserva
+# Update available seats after a reservation
 @jwt_required
 def update_schedule_seats(event, context):
     schedule_id = event['pathParameters'].get('schedule_id')
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
+
     if not tenant_id:
         return {
             "statusCode": 400,
