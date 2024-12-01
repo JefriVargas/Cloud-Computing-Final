@@ -6,8 +6,14 @@ import boto3
 import jwt
 from functools import wraps
 
+# JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET', 'mysecretkey')
 
+# DynamoDB Configuration
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table(os.environ['DYNAMODB_TABLE_PELICULAS'])
+
+# Validate JWT Token
 def validate_jwt(token):
     try:
         decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
@@ -17,34 +23,39 @@ def validate_jwt(token):
     except jwt.InvalidTokenError:
         raise ValueError("Token inválido")
 
+# JWT Required Decorator
 def jwt_required(func):
     @wraps(func)
     def wrapper(event, context, *args, **kwargs):
         headers = event.get('headers', {})
-        auth_header = headers.get('Authorization')
+        print(f"Headers received: {headers}")  # Debug headers
+        auth_header = headers.get('Authorization') or headers.get('authorization')
         if not auth_header or not auth_header.startswith("Bearer "):
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": "Se requiere un token válido en el encabezado Authorization"})
             }
-        token = auth_header.split(" ")[1]  # Get the token part after "Bearer"
+        token = auth_header.split(" ")[1]  # Extract token after "Bearer"
         try:
             decoded = validate_jwt(token)
+            print(f"Decoded JWT: {decoded}")  # Debug token decoding
             event['user'] = decoded  # Add decoded JWT data to the event
         except ValueError as e:
+            print(f"JWT Validation Error: {str(e)}")  # Log the error
             return {
                 "statusCode": 401,
                 "body": json.dumps({"error": str(e)})
             }
+        except Exception as e:
+            print(f"Unexpected Error: {str(e)}")  # Log unexpected errors
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "Error interno del servidor"})
+            }
         return func(event, context, *args, **kwargs)
     return wrapper
 
-
-# Configuración de DynamoDB
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['DYNAMODB_TABLE_PELICULAS'])
-
-# Listar todas las películas para un tenant específico
+# List Movies for a Tenant
 @jwt_required
 def list_movies(event, context):
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
@@ -64,17 +75,18 @@ def list_movies(event, context):
             "body": json.dumps(movies)
         }
     except Exception as e:
+        print(f"Error Listing Movies: {str(e)}")  # Log the error
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Error al listar las películas", "details": str(e)})
         }
 
-# Obtener detalles de una película específica para un tenant
+# Get Details of a Specific Movie
 @jwt_required
 def get_movie_details(event, context):
     movie_id = event['pathParameters']['movie_id']
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
-    
+
     if not tenant_id:
         return {
             "statusCode": 400,
@@ -99,15 +111,23 @@ def get_movie_details(event, context):
                 "body": json.dumps({"error": "Película no encontrada"})
             }
     except Exception as e:
+        print(f"Error Getting Movie Details: {str(e)}")  # Log the error
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Error al obtener detalles de la película", "details": str(e)})
         }
 
-# Agregar una nueva película
+# Add a New Movie
 @jwt_required
 def add_movie(event, context):
-    data = json.loads(event['body'])
+    try:
+        data = json.loads(event['body'])
+    except json.JSONDecodeError:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "El cuerpo de la solicitud no es JSON válido"})
+        }
+
     if 'titulo' not in data or 'genero' not in data or 'release_date' not in data or 'tenant_id' not in data:
         return {
             "statusCode": 400,
@@ -133,6 +153,7 @@ def add_movie(event, context):
             "body": json.dumps({"message": "Película agregada exitosamente", "movie_id": movie_id})
         }
     except Exception as e:
+        print(f"Error Adding Movie: {str(e)}")  # Log the error
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Error al agregar la película", "details": str(e)})
