@@ -12,6 +12,7 @@ function validateJwt(token) {
     }
 }
 
+// Middleware for JWT validation
 function jwtRequired(handler) {
     return async (event) => {
         const authHeader = event.headers?.Authorization || event.headers?.authorization;
@@ -22,10 +23,10 @@ function jwtRequired(handler) {
             };
         }
 
-        const token = authHeader.split(' ')[1];
+        const token = authHeader.split(' ')[1]; // Extract token after "Bearer"
         try {
             const decoded = validateJwt(token);
-            event.user = decoded; // Attach the decoded token to the event for further use
+            event.user = decoded; // Attach decoded token payload to event for further use
         } catch (error) {
             return {
                 statusCode: 401,
@@ -33,18 +34,20 @@ function jwtRequired(handler) {
             };
         }
 
-        // Proceed to the actual handler
+        // Call the original handler if token is valid
         return handler(event);
     };
 }
 
-// Configuración de DynamoDB
+// Configure DynamoDB
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const ORDERS_TABLE = process.env.DYNAMODB_TABLE_ORDENES;
 
-// Crear una orden de compra
+// Create a new order
 exports.createOrder = jwtRequired(async (event) => {
     let data;
+
+    // Parse the request body
     try {
         data = JSON.parse(event.body);
     } catch (error) {
@@ -56,18 +59,20 @@ exports.createOrder = jwtRequired(async (event) => {
 
     const { tenant_id, email, products } = data;
 
-    if (!tenant_id || !email || !products) {
+    // Validate required fields
+    if (!tenant_id || !email || !products || !Array.isArray(products)) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ error: 'Campos tenant_id, email y products son requeridos' }),
+            body: JSON.stringify({ error: 'Campos tenant_id, email y products (array) son requeridos' }),
         };
     }
 
     const order_id = uuidv4();
     let total_price;
 
+    // Calculate total price
     try {
-        total_price = products.reduce((sum, product) => sum + parseFloat(product.price), 0);
+        total_price = products.reduce((sum, product) => sum + parseFloat(product.price || 0), 0);
         if (isNaN(total_price)) {
             throw new Error('Precio inválido');
         }
@@ -92,6 +97,7 @@ exports.createOrder = jwtRequired(async (event) => {
         Item: item,
     };
 
+    // Insert order into DynamoDB
     try {
         await dynamodb.put(params).promise();
         return {
@@ -99,6 +105,7 @@ exports.createOrder = jwtRequired(async (event) => {
             body: JSON.stringify({ message: 'Orden creada exitosamente', order_id }),
         };
     } catch (error) {
+        console.error('Error creating order:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Error al crear la orden', details: error.message }),
@@ -106,10 +113,11 @@ exports.createOrder = jwtRequired(async (event) => {
     }
 });
 
-// Listar órdenes de un usuario por email
+// List orders for a specific user
 exports.listOrdersByUser = jwtRequired(async (event) => {
     const { tenant_id, email } = event.queryStringParameters || {};
 
+    // Validate required query parameters
     if (!tenant_id || !email) {
         return {
             statusCode: 400,
@@ -119,7 +127,7 @@ exports.listOrdersByUser = jwtRequired(async (event) => {
 
     const params = {
         TableName: ORDERS_TABLE,
-        IndexName: 'EmailIndex',
+        IndexName: 'EmailIndex', // Ensure EmailIndex is correctly set up in DynamoDB
         KeyConditionExpression: 'tenant_id = :tenant_id AND email = :email',
         ExpressionAttributeValues: {
             ':tenant_id': tenant_id,
@@ -127,13 +135,16 @@ exports.listOrdersByUser = jwtRequired(async (event) => {
         },
     };
 
+    // Query DynamoDB for user's orders
     try {
         const result = await dynamodb.query(params).promise();
+        const orders = result.Items || [];
         return {
             statusCode: 200,
-            body: JSON.stringify(result.Items),
+            body: JSON.stringify(orders),
         };
     } catch (error) {
+        console.error('Error listing orders:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Error al listar órdenes', details: error.message }),
