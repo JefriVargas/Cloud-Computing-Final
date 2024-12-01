@@ -125,7 +125,7 @@ functions:
     handler: api_productos/handler.listProducts
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /productos
@@ -135,7 +135,7 @@ functions:
     handler: api_productos/handler.addProduct
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /productos
@@ -145,7 +145,7 @@ functions:
     handler: api_productos/handler.deleteProduct
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /productos/{product_id}
@@ -156,7 +156,7 @@ functions:
     handler: api_reservas/handler.createReservation
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /reservas
@@ -166,7 +166,7 @@ functions:
     handler: api_reservas/handler.getReservation
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /reservas/{reservation_id}
@@ -176,7 +176,7 @@ functions:
     handler: api_reservas/handler.listReservationsByEmail
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /reservas
@@ -187,7 +187,7 @@ functions:
     handler: api_ordenes/handler.createOrder
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /ordenes
@@ -197,7 +197,7 @@ functions:
     handler: api_ordenes/handler.getOrder
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /ordenes/{order_id}
@@ -207,7 +207,7 @@ functions:
     handler: api_ordenes/handler.listOrdersByUser
     runtime: nodejs18.x
     layers:
-      - arn:aws:lambda:us-east-1:381491830959:layer:NodeDependenciesLayer:1
+      - arn:aws:lambda:us-east-1:381491830959:layer:layernodefinal:1
     events:
       - httpApi:
           path: /ordenes
