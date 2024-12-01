@@ -88,6 +88,7 @@ exports.listProducts = jwtRequired(async (event) => {
             body: JSON.stringify(items),
         };
     } catch (error) {
+        console.error('Error listing products:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Error al listar productos', details: error.message }),
@@ -142,6 +143,7 @@ exports.addProduct = jwtRequired(async (event) => {
             }),
         };
     } catch (error) {
+        console.error('Error adding product:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Error al agregar el producto', details: error.message }),
@@ -178,6 +180,7 @@ exports.deleteProduct = jwtRequired(async (event) => {
             body: JSON.stringify({ message: 'Producto eliminado exitosamente' }),
         };
     } catch (error) {
+        console.error('Error deleting product:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Error al eliminar el producto', details: error.message }),
