@@ -40,7 +40,6 @@ def jwt_required(func):
         return func(event, context, *args, **kwargs)
     return wrapper
 
-
 # Configuración de DynamoDB
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_HORARIOS'])
@@ -76,6 +75,7 @@ def list_schedules(event, context):
             "body": json.dumps(schedules)
         }
     except Exception as e:
+        print(f"Error listing schedules: {e}")  # Debug log
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Error al listar los horarios", "details": str(e)})
@@ -84,7 +84,14 @@ def list_schedules(event, context):
 # Crear un nuevo horario
 @jwt_required
 def create_schedule(event, context):
-    data = json.loads(event['body'])
+    try:
+        data = json.loads(event['body'])
+    except json.JSONDecodeError:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "El cuerpo de la solicitud no es JSON válido"})
+        }
+
     if 'tenant_id' not in data or 'movie_id' not in data or 'function_date' not in data or 'available_seats' not in data:
         return {
             "statusCode": 400,
@@ -109,16 +116,16 @@ def create_schedule(event, context):
             "body": json.dumps({"message": "Horario creado exitosamente", "schedule_id": schedule_id})
         }
     except Exception as e:
+        print(f"Error creating schedule: {e}")  # Debug log
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Error al crear el horario", "details": str(e)})
         }
 
-# Actualizar asientos disponibles después de una reserv
 # Actualizar asientos disponibles después de una reserva
 @jwt_required
 def update_schedule_seats(event, context):
-    schedule_id = event['pathParameters']['schedule_id']
+    schedule_id = event['pathParameters'].get('schedule_id')
     tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
     if not tenant_id:
         return {
@@ -126,7 +133,14 @@ def update_schedule_seats(event, context):
             "body": json.dumps({"error": "El tenant_id es requerido"})
         }
 
-    data = json.loads(event['body'])
+    try:
+        data = json.loads(event['body'])
+    except json.JSONDecodeError:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "El cuerpo de la solicitud no es JSON válido"})
+        }
+
     if 'reserved_seats' not in data:
         return {
             "statusCode": 400,
@@ -134,7 +148,6 @@ def update_schedule_seats(event, context):
         }
 
     try:
-        # Obtener el horario
         response = table.get_item(
             Key={
                 'tenant_id': tenant_id,
@@ -156,7 +169,6 @@ def update_schedule_seats(event, context):
                 "body": json.dumps({"error": "No hay suficientes asientos disponibles"})
             }
 
-        # Actualizar asientos disponibles
         table.update_item(
             Key={
                 'tenant_id': tenant_id,
@@ -164,15 +176,14 @@ def update_schedule_seats(event, context):
             },
             UpdateExpression="SET available_seats = :new_seats",
             ExpressionAttributeValues={
-                ':new_seats': Decimal(new_available_seats)  # Aseguramos que sea Decimal para DynamoDB
+                ':new_seats': Decimal(new_available_seats)  # Ensure Decimal for DynamoDB
             }
         )
 
-        # Convertir valores a nativos antes de retornar la respuesta
         updated_schedule = {
             "tenant_id": tenant_id,
             "schedule_id": schedule_id,
-            "available_seats": int(new_available_seats)  # Convertir a entero para JSON
+            "available_seats": int(new_available_seats)  # Convert to int for JSON response
         }
 
         return {
@@ -180,44 +191,8 @@ def update_schedule_seats(event, context):
             "body": json.dumps(updated_schedule)
         }
     except Exception as e:
+        print(f"Error updating schedule seats: {e}")  # Debug log
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Error al actualizar asientos", "details": str(e)})
         }
-
-
-
-# Listar todos los horarios disponibles para un tenant, opcionalmente filtrando por movie_id
-@jwt_required
-def list_schedules(event, context):
-    tenant_id = event.get('queryStringParameters', {}).get('tenant_id')
-    movie_id = event.get('queryStringParameters', {}).get('movie_id')
-    if not tenant_id:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "El tenant_id es requerido"})
-        }
-
-    try:
-        # Crear la expresión de clave con el tenant_id y, si existe, filtrar por movie_id
-        key_condition = boto3.dynamodb.conditions.Key('tenant_id').eq(tenant_id)
-        if movie_id:
-            key_condition = key_condition & boto3.dynamodb.conditions.Key('movie_id').eq(movie_id)
-
-        response = table.query(
-            IndexName='MovieIndex',  # Asegúrate de tener un índice secundario en movie_id si es necesario
-            KeyConditionExpression=key_condition
-        )
-
-        schedules = response.get('Items', [])
-        schedules = decimal_to_native(schedules)
-        return {
-            "statusCode": 200,
-            "body": json.dumps(schedules)
-        }
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": "Error al listar los horarios", "details": str(e)})
-        }
-
